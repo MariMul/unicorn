@@ -59,6 +59,7 @@
 #define cpu_resume cpu_resume_aarch64
 #define qemu_init_vcpu qemu_init_vcpu_aarch64
 #define cpu_stop_current cpu_stop_current_aarch64
+#define cpu_interrupt_handler cpu_interrupt_handler_aarch64
 #define resume_all_vcpus resume_all_vcpus_aarch64
 #define vm_start vm_start_aarch64
 #define address_space_dispatch_compact address_space_dispatch_compact_aarch64

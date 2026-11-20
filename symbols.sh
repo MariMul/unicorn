@@ -59,6 +59,7 @@ cpu_get_clock \
 cpu_resume \
 qemu_init_vcpu \
 cpu_stop_current \
+cpu_interrupt_handler \
 resume_all_vcpus \
 vm_start \
 address_space_dispatch_compact \
