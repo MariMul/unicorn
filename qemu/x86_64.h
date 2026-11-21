@@ -59,6 +59,7 @@
 #define cpu_resume cpu_resume_x86_64
 #define qemu_init_vcpu qemu_init_vcpu_x86_64
 #define cpu_stop_current cpu_stop_current_x86_64
+#define cpu_interrupt_handler cpu_interrupt_handler_x86_64
 #define resume_all_vcpus resume_all_vcpus_x86_64
 #define vm_start vm_start_x86_64
 #define address_space_dispatch_compact address_space_dispatch_compact_x86_64

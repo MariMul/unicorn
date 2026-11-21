@@ -59,6 +59,7 @@
 #define cpu_resume cpu_resume_sparc
 #define qemu_init_vcpu qemu_init_vcpu_sparc
 #define cpu_stop_current cpu_stop_current_sparc
+#define cpu_interrupt_handler cpu_interrupt_handler_sparc
 #define resume_all_vcpus resume_all_vcpus_sparc
 #define vm_start vm_start_sparc
 #define address_space_dispatch_compact address_space_dispatch_compact_sparc

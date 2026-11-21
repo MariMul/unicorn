@@ -59,6 +59,7 @@
 #define cpu_resume cpu_resume_mips64el
 #define qemu_init_vcpu qemu_init_vcpu_mips64el
 #define cpu_stop_current cpu_stop_current_mips64el
+#define cpu_interrupt_handler cpu_interrupt_handler_mips64el
 #define resume_all_vcpus resume_all_vcpus_mips64el
 #define vm_start vm_start_mips64el
 #define address_space_dispatch_compact address_space_dispatch_compact_mips64el

@@ -59,6 +59,7 @@
 #define cpu_resume cpu_resume_riscv64
 #define qemu_init_vcpu qemu_init_vcpu_riscv64
 #define cpu_stop_current cpu_stop_current_riscv64
+#define cpu_interrupt_handler cpu_interrupt_handler_riscv64
 #define resume_all_vcpus resume_all_vcpus_riscv64
 #define vm_start vm_start_riscv64
 #define address_space_dispatch_compact address_space_dispatch_compact_riscv64

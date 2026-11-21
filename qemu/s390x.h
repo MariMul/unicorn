@@ -59,6 +59,7 @@
 #define cpu_resume cpu_resume_s390x
 #define qemu_init_vcpu qemu_init_vcpu_s390x
 #define cpu_stop_current cpu_stop_current_s390x
+#define cpu_interrupt_handler cpu_interrupt_handler_s390x
 #define resume_all_vcpus resume_all_vcpus_s390x
 #define vm_start vm_start_s390x
 #define address_space_dispatch_compact address_space_dispatch_compact_s390x
