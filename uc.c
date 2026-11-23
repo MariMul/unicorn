@@ -3411,10 +3411,12 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 128: translated blocks count guest instructions in CPUState.
 // 256: fast ARM blocks debit the coarse interactive budget in translated code.
 // 512: ABI-1 Cortex-A7 accepted-TLBI owner queue.
+// 1024: opted-in Thumb blocks debit the coarse budget only on the enabled
+//       embedder-designated 4 KiB page and when classified safe by the filter.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
 }
 
 UNICORN_EXPORT
@@ -3552,7 +3554,7 @@ uint64_t uc_embedder_instruction_counter(uc_engine *uc)
 // embedder: the budgeted block accounting record (uc_priv.h): the embedder reads
 // and writes budget and head directly; ring/mask/enabled/pause_requested are
 // set while no emulation runs. Layout: int64 budget, u64 head, u64 *ring,
-// u64 mask, u64 enabled, u32 *pause_requested.
+// u64 mask, u64 enabled, u32 *pause_requested, u64 thumb_page.
 UNICORN_EXPORT
 void *uc_embedder_accounting(uc_engine *uc)
 {
