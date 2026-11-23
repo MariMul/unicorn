@@ -3419,10 +3419,11 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 2048: Thumb recovery accounting appends the last admitted fast block span.
 // 8192: appended counters report learned and terminal-request mode-4 stores.
 // 16384: appended counters attribute translated block-guard refusals.
+// 32768: uc_embedder_add_restart_boundary installs a native no-op memory hook.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768;
 }
 
 UNICORN_EXPORT
@@ -3552,6 +3553,29 @@ uc_err uc_embedder_set_guard_diagnostics(uc_engine *uc, bool enabled)
     }
     restore_jit_state(uc);
     return UC_ERR_OK;
+}
+
+static void uc_embedder_restart_boundary_callback(uc_engine *uc,
+                                                  uc_mem_type type,
+                                                  uint64_t address, int size,
+                                                  int64_t value,
+                                                  void *user_data)
+{
+    (void)uc;
+    (void)type;
+    (void)address;
+    (void)size;
+    (void)value;
+    (void)user_data;
+}
+
+UNICORN_EXPORT
+uc_err uc_embedder_add_restart_boundary(uc_engine *uc, uc_hook *hook,
+                                        uint64_t begin, uint64_t end)
+{
+    return uc_hook_add(uc, hook, UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE,
+                       (void *)uc_embedder_restart_boundary_callback, NULL,
+                       begin, end);
 }
 
 UNICORN_EXPORT
