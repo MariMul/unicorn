@@ -3418,10 +3418,11 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 //       embedder-designated 4 KiB page and when classified safe by the filter.
 // 2048: Thumb recovery accounting appends the last admitted fast block span.
 // 8192: appended counters report learned and terminal-request mode-4 stores.
+// 16384: appended counters attribute translated block-guard refusals.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384;
 }
 
 UNICORN_EXPORT
@@ -3533,6 +3534,19 @@ uc_err uc_embedder_set_instruction_counter(uc_engine *uc, bool enabled)
         uc->embedder_instruction_counter = enabled;
         uc->cpu->embedder_retired_instructions = 0;
         uc->cpu->embedder_retired_block_active = false;
+        uc->cpu->cflags_next_tb = -1;
+        uc->tb_flush(uc);
+    }
+    restore_jit_state(uc);
+    return UC_ERR_OK;
+}
+
+UNICORN_EXPORT
+uc_err uc_embedder_set_guard_diagnostics(uc_engine *uc, bool enabled)
+{
+    UC_INIT(uc);
+    if (uc->embedder_guard_diagnostics != enabled) {
+        uc->embedder_guard_diagnostics = enabled;
         uc->cpu->cflags_next_tb = -1;
         uc->tb_flush(uc);
     }
