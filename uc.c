@@ -3420,10 +3420,11 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 8192: appended counters report learned and terminal-request mode-4 stores.
 // 16384: appended counters attribute translated block-guard refusals.
 // 32768: uc_embedder_add_restart_boundary installs a native no-op memory hook.
+// 65536: Thumb filter decision bit 8 executes the instruction and ends its TB.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768 | 65536;
 }
 
 UNICORN_EXPORT
