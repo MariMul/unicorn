@@ -541,6 +541,9 @@ uc_err uc_close(uc_engine *uc)
     if (uc->embedder_io_pcs) {
         g_hash_table_destroy(uc->embedder_io_pcs);
     }
+    if (uc->embedder_watched_store_pcs) {
+        g_hash_table_destroy(uc->embedder_watched_store_pcs);
+    }
 
     // Cleanup internally.
     if (uc->release) {
@@ -3414,10 +3417,11 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 1024: opted-in Thumb blocks debit the coarse budget only on the enabled
 //       embedder-designated 4 KiB page and when classified safe by the filter.
 // 2048: Thumb recovery accounting appends the last admitted fast block span.
+// 8192: appended counters report learned and terminal-request mode-4 stores.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192;
 }
 
 UNICORN_EXPORT
