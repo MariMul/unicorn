@@ -3413,10 +3413,11 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 512: ABI-1 Cortex-A7 accepted-TLBI owner queue.
 // 1024: opted-in Thumb blocks debit the coarse budget only on the enabled
 //       embedder-designated 4 KiB page and when classified safe by the filter.
+// 2048: Thumb recovery accounting appends the last admitted fast block span.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048;
 }
 
 UNICORN_EXPORT
@@ -3554,7 +3555,9 @@ uint64_t uc_embedder_instruction_counter(uc_engine *uc)
 // embedder: the budgeted block accounting record (uc_priv.h): the embedder reads
 // and writes budget and head directly; ring/mask/enabled/pause_requested are
 // set while no emulation runs. Layout: int64 budget, u64 head, u64 *ring,
-// u64 mask, u64 enabled, u32 *pause_requested, u64 thumb_page.
+// u64 mask, u64 enabled, u32 *pause_requested, then ThumbBlockAccounting:
+// u64 thumb_page, u64 last_block_start, i64 last_block_remaining_budget,
+// u32 last_block_bytes, u32 last_block_icount.
 UNICORN_EXPORT
 void *uc_embedder_accounting(uc_engine *uc)
 {
