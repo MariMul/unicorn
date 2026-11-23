@@ -3428,10 +3428,12 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 131072: Thumb filter decision bit 16 proves an instruction safe in ITSTATE.
 // 524288: opt-in translation timing classifies first, repeated lookup keys,
 //         and keys that cannot be recorded in the bounded table.
+// 2097152: opt-in translation repeat details split generations and observed
+//          invalidation causes.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768 | 65536 | 131072 | 524288;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768 | 65536 | 131072 | 524288 | 2097152;
 }
 
 UNICORN_EXPORT
@@ -3627,3 +3629,16 @@ const uint64_t *uc_embedder_exit_counters(uc_engine *uc)
 {
     return uc->embedder_exit_counters;
 }
+
+// Opt-in translation repeat diagnostics. See uc_embedder_features bit 21.
+// The fixed array is (count, elapsed_ns) pairs for: repeats across a global
+// TB flush, repeats in the same generation, same-generation repeats with an
+// unknown invalidation cause, then same-generation repeats attributed to
+// restore_nocache, exec_nocache, io_recompile, guest_store, exit_address,
+// embedder, watchpoint, restart, and physical_write. Across-flush repeats are
+// correlated with a flush, not attributed to it as their cause.
+UNICORN_EXPORT
+const uint64_t *uc_embedder_translation_repeat_counters(uc_engine *uc,
+                                                         size_t *count)
+{
+    return uc_translation_timing_repeat_counters(uc, count);
