@@ -35,6 +35,7 @@ _Thread_local unsigned int uc_jit_toggle_count;
 #endif
 #include "qemu/include/qemu/queue.h"
 #include "qemu-common.h"
+#include "qemu/accel/tcg/translation-timing.h"
 
 static void embedder_flush_tlb_flags(struct uc_struct *uc);
 
@@ -534,6 +535,9 @@ uc_err uc_close(uc_engine *uc)
 
     // Flush all translation buffers or we leak memory allocated by MMU
     uc->tb_flush(uc);
+
+    uc_translation_timing_free(uc->embedder_translation_timing);
+    uc->embedder_translation_timing = NULL;
 
     g_free(uc->embedder_watch);
     g_free(uc->embedder_flat[0].h);
@@ -3422,10 +3426,12 @@ uc_err uc_embedder_request_restart(uc_engine *uc)
 // 32768: uc_embedder_add_restart_boundary installs a native no-op memory hook.
 // 65536: Thumb filter decision bit 8 executes the instruction and ends its TB.
 // 131072: Thumb filter decision bit 16 proves an instruction safe in ITSTATE.
+// 524288: opt-in translation timing classifies first, repeated lookup keys,
+//         and keys that cannot be recorded in the bounded table.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
-    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768 | 65536 | 131072;
+    return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 8192 | 16384 | 32768 | 65536 | 131072 | 524288;
 }
 
 UNICORN_EXPORT
@@ -3548,6 +3554,13 @@ UNICORN_EXPORT
 uc_err uc_embedder_set_guard_diagnostics(uc_engine *uc, bool enabled)
 {
     UC_INIT(uc);
+    if (enabled && !uc->embedder_translation_timing) {
+        uc->embedder_translation_timing = uc_translation_timing_new();
+        if (!uc->embedder_translation_timing) {
+            restore_jit_state(uc);
+            return UC_ERR_NOMEM;
+        }
+    }
     if (uc->embedder_guard_diagnostics != enabled) {
         uc->embedder_guard_diagnostics = enabled;
         uc->cpu->cflags_next_tb = -1;
