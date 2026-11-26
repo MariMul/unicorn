@@ -32,6 +32,7 @@
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
 #include "uc_priv.h"
+#include "unicorn/arm.h"
 
 #define ENABLE_ARCH_4T    arm_dc_feature(s, ARM_FEATURE_V4T)
 #define ENABLE_ARCH_5     arm_dc_feature(s, ARM_FEATURE_V5)
@@ -11613,7 +11614,15 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
     // Unicorn: trace this instruction on request
     insn_size = is_16bit ? 2 : 4;
-    if (HOOK_EXISTS_BOUNDED(uc, UC_HOOK_CODE, dc->base.pc_next - insn_size)) {
+    // The Cortex-A7 counted frontend uses a tagged PC and a canonical
+    // Thumb encoding (first halfword in bits 31:16 for a wide instruction).
+    if (uc->embedder_insn_filter && uc->arch == UC_ARCH_ARM &&
+        uc->cpu_model == UC_CPU_ARM_CORTEX_A7) {
+        uc->embedder_insn_decision = uc->embedder_insn_filter(
+            uc->embedder_filter_user, dc->pc_curr | 1, insn);
+    }
+    if ((uc->embedder_insn_decision & 3) != 0 &&
+        HOOK_EXISTS_BOUNDED(uc, UC_HOOK_CODE, dc->pc_curr)) {
         
         // Publish the current architectural state before the callback.
         gen_set_pc_im(dc, dc->base.pc_next - insn_size);
@@ -11623,6 +11632,9 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
         // the callback might want to stop emulation immediately
         check_exit_request(tcg_ctx);
         uc->no_exit_request = (dc->condexec_mask != 0);
+        if ((uc->embedder_insn_decision & 3) == 3) {
+            return;
+        }
     }
 
     if (dc->condexec_mask && !thumb_insn_is_unconditional(dc, insn)) {
