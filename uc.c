@@ -2287,7 +2287,7 @@ static void uc_tracecode_hooks(int32_t size, uc_hook_idx index, void *handle,
     // Coarse interactive accounting is debited by the translated guard, so a
     // fast block that reaches this helper has already run out of budget and
     // needs the embedder's own settlement.
-    if (index == UC_HOOK_BLOCK_IDX && (size & 0x40000000) &&
+    if (index == UC_HOOK_BLOCK_IDX && ((uint32_t)size >> 30) == 1 &&
         uc->embedder_acct.enabled == 1) {
         int64_t count = (size & 0x3fffffff) >> 2;
         if (uc->embedder_acct.budget >= count &&
@@ -3565,12 +3565,13 @@ done:
 //          instruction-opportunity histograms.
 // 1 << 29: opt-in translation repeat details split generations and observed
 //          invalidation causes.
+// 1 << 30: Thumb block hooks carry short-block entry offsets in the size word.
 UNICORN_EXPORT
 uint32_t uc_embedder_features(void)
 {
     return 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
            4096 | 1u << 20 | 1u << 21 | 1u << 22 | 1u << 23 | 1u << 24 |
-           1u << 25 | 1u << 26 | 1u << 27 | 1u << 28 | 1u << 29;
+           1u << 25 | 1u << 26 | 1u << 27 | 1u << 28 | 1u << 29 | 1u << 30;
 }
 
 UNICORN_EXPORT

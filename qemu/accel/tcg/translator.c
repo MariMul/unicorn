@@ -520,6 +520,7 @@ void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
     TCGContext *tcg_ctx = uc->tcg_ctx;
     TCGOp *prev_op = NULL;
     bool block_hook = false;
+    uint32_t thumb_entries = 0;
     struct EmbedderBlockGuard embedder_guard = { 0 };
     TCGLabel *chain_body = NULL;
 
@@ -656,6 +657,12 @@ void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
            done next -- either exiting this loop or locate the start of
            the next instruction.  */
         ops->translate_insn(db, cpu);
+        // Record decoded starts for the compact Thumb block-hook payload.
+        // Some synthetic entries terminate without consuming instruction bytes.
+        if (block_hook && uc->embedder_insn_filter && uc->embedder_tb_thumb &&
+            db->pc_next > embedder_pc && db->pc_next - db->pc_first <= 28) {
+            thumb_entries |= 1u << ((embedder_pc - db->pc_first) / 2);
+        }
         // tcg_dump_ops(tcg_ctx, false, "insn translate");
 
         // embedder: the filter may ask for the block hook on every entry (4).
@@ -732,6 +739,12 @@ _end_loop:
         // hook's size reports Thumb state, so the hook need not read CPSR.
         if (uc->embedder_insn_filter && uc->embedder_tb_thumb) {
             tcg_op->args[1] |= 0x80000000u;
+            // With bit 30 set as well, bits 16..29 identify the halfwords
+            // that start instructions. Larger blocks use the ordinary span.
+            if (thumb_entries && db->tb->size <= 28 &&
+                !(uc->count_hook && uc->count_hook_is_block)) {
+                tcg_op->args[1] |= 0x40000000u | (thumb_entries << 16);
+            }
         }
         // embedder: bit 30 marks an ARM block budgeted accounting may enter
         // without hooks after translation has installed any code-write watches.
