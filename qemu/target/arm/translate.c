@@ -32,6 +32,7 @@
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
 #include "uc_priv.h"
+#include "unicorn/arm.h"
 
 #define ENABLE_ARCH_4T    arm_dc_feature(s, ARM_FEATURE_V4T)
 #define ENABLE_ARCH_5     arm_dc_feature(s, ARM_FEATURE_V5)
@@ -11666,11 +11667,16 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     // and resume at every instruction entry, including a failed condition.
     uc->no_exit_request = (dc->condexec_mask != 0);
 
-    // Unicorn: trace this instruction on request
-    if (HOOK_EXISTS_BOUNDED(uc, UC_HOOK_CODE, dc->base.pc_next - insn_size)) {
+    // Cortex-A7 counted execution classifies canonical Thumb encodings
+    // with a tagged instruction address. Other cores retain their hooks.
+    bool a7_filter = uc->embedder_insn_filter && uc->arch == UC_ARCH_ARM &&
+                     uc->cpu_model == UC_CPU_ARM_CORTEX_A7;
+    unsigned hook_decision = a7_filter
+        ? uc->embedder_insn_filter(uc->embedder_filter_user, dc->pc_curr | 1, insn) & 3
+        : 1;
+    if (hook_decision != 0 && HOOK_EXISTS_BOUNDED(uc, UC_HOOK_CODE, dc->pc_curr)) {
         if (uc->embedder_acct.enabled == 3 || uc->embedder_acct.enabled == 4) {
-            // A code hook may stop before this instruction retires, so the
-            // translated instruction count cannot be debited as a whole.
+            // A code hook may stop before this instruction retires.
             UC_EMBEDDER_MARK_TB_SLOW(uc, UC_EMBEDDER_TB_SLOW_OTHER);
         }
         
@@ -11682,6 +11688,9 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
         // the callback might want to stop emulation immediately
         check_exit_request(tcg_ctx);
         uc->no_exit_request = (dc->condexec_mask != 0);
+        if (hook_decision == 3) {
+            return;
+        }
     }
 
     if (dc->condexec_mask && !thumb_insn_is_unconditional(dc, insn)) {
