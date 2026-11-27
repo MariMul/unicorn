@@ -333,6 +333,23 @@ static int encode_search(struct uc_struct *uc, TranslationBlock *tb, uint8_t *bl
 static void count_restart_tail(CPUState *cpu, TranslationBlock *tb,
                                uintptr_t retaddr);
 
+static void apply_restore_state(CPUState *cpu, TranslationBlock *tb,
+                                target_ulong *data, int index, bool will_exit)
+{
+    int remaining = tb->icount - index;
+
+    if (will_exit && (tb_cflags(tb) & CF_USE_ICOUNT)) {
+        /* Refund the entries from the interrupted instruction onwards. */
+        cpu_neg(cpu)->icount_decr.u16.low += remaining;
+    }
+    if (will_exit && cpu->uc->embedder_instruction_counter &&
+        cpu->embedder_retired_block_active) {
+        cpu->embedder_retired_instructions -= remaining;
+        cpu->embedder_retired_block_active = false;
+    }
+    restore_state_to_opc(cpu->env_ptr, tb, data);
+}
+
 /* The cpu state corresponding to 'searched_pc' is restored.
  * When reset_icount is true, current TB will be interrupted and
  * icount should be recalculated.
@@ -342,7 +359,6 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 {
     target_ulong data[TARGET_INSN_START_WORDS] = { tb->pc };
     uintptr_t host_pc = (uintptr_t)tb->tc.ptr;
-    CPUArchState *env = cpu->env_ptr;
     uint8_t *p = (uint8_t *)tb->tc.ptr + tb->tc.size;
     int i, j, num_insns = tb->icount;
 
@@ -366,17 +382,7 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
     return -1;
 
  found:
-    if (reset_icount && (tb_cflags(tb) & CF_USE_ICOUNT)) {
-        /* Reset the cycle counter to the start of the block
-           and shift if to the number of actually executed instructions */
-        cpu_neg(cpu)->icount_decr.u16.low += num_insns - i;
-    }
-    if (reset_icount && cpu->uc->embedder_instruction_counter &&
-        cpu->embedder_retired_block_active) {
-        cpu->embedder_retired_instructions -= num_insns - i;
-        cpu->embedder_retired_block_active = false;
-    }
-    restore_state_to_opc(env, tb, data);
+    apply_restore_state(cpu, tb, data, i, reset_icount);
 
     return 0;
 }
@@ -454,12 +460,10 @@ bool cpu_restore_state(CPUState *cpu, uintptr_t host_pc, bool will_exit)
 
     if (check_offset < uc->tcg_ctx->code_gen_buffer_size) {
         uc->embedder_exit_counters[UC_COUNT_TB_RESTORE_LOOKUPS]++;
-        if (!will_exit) {
-            struct embedder_site *site = embedder_site(uc, host_pc);
-            if (site) {
-                restore_state_to_opc(cpu->env_ptr, site->tb, site->data);
-                return true;
-            }
+        struct embedder_site *site = embedder_site(uc, host_pc);
+        if (site) {
+            apply_restore_state(cpu, site->tb, site->data, site->index, will_exit);
+            return true;
         }
         tb = tcg_tb_lookup(tcg_ctx, host_pc);
         if (tb) {
